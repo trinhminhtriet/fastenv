@@ -18,9 +18,6 @@ jobs:
           - os: ubuntu-latest
             artifact_name: fastenv
             asset_name: fastenv-linux-gnu-amd64
-          - os: windows-latest
-            artifact_name: fastenv.exe
-            asset_name: fastenv-windows-amd64.exe
           - os: macos-latest
             artifact_name: fastenv
             asset_name: fastenv-darwin-amd64
@@ -35,7 +32,7 @@ jobs:
           override: true
       - name: Build release
         run: cargo build --release --locked
-      - name: Set prerelease flag (non-Windows)
+      - name: Set prerelease flag
         if: runner.os != 'Windows'
         run: |
           if [ $(echo ${{ github.ref }} | grep "rc") ]; then
@@ -49,23 +46,6 @@ jobs:
           VERSION=$(echo ${{ github.ref }} | sed 's/refs\/tags\///g')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION=$VERSION"
-      - name: Set prerelease flag (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          $full = "${{ github.ref }}"
-
-          if ( $full -like '*rc*' ) {
-            echo "PRERELEASE=true" >> $env:GITHUB_ENV
-            echo "PRERELEASE=true"
-          } else {
-            echo "PRERELEASE=false" >> $env:GITHUB_ENV
-            echo "PRERELEASE=false"
-          }
-
-          $trimmed = $full -replace 'refs/tags/',''
-          echo "VERSION=$trimmed" >> $env:GITHUB_ENV
-          echo "VERSION=$trimmed"
       - name: Upload release assets
         uses: svenstaro/upload-release-action@v2
         with:
