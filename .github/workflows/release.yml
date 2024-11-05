@@ -1,86 +1,78 @@
+name: Release
+
 on:
   push:
-    tags: "v*"
+    tags:
+      - "v*"
 
-name: Create Release
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   release:
-    name: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-      - name: Output Release URL File
-        run: echo "${{ steps.create_release.outputs.upload_url }}" > upload_url.txt
-      - name: Save Release URL File for publish
-        uses: actions/upload-artifact@v4
-        with:
-          name: upload_url
-          path: upload_url.txt
-
-  build:
-    name: artifact
-
-    needs: [release]
-
+    name: "Release"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        build: [linux, macos, macos-m1]
         include:
-          - build: linux
-            os: ubuntu-latest
-            asset_name: fastenv-linux-x86_64
-            cargo_name: fastenv
-            rustup_target: x86_64-unknown-linux-musl
-          - build: macos
-            os: macos-latest
-            asset_name: fastenv-mac-x86_64
-            cargo_name: fastenv
-            rustup_target: x86_64-apple-darwin
-          - build: macos-m1
-            os: macos-latest
-            asset_name: fastenv-mac-aarch64
-            cargo_name: fastenv
-            rustup_target: aarch64-apple-darwin
-
+          - os: ubuntu-latest
+            artifact_name: fastenv
+            asset_name: fastenv-linux-gnu-amd64
+          - os: windows-latest
+            artifact_name: fastenv.exe
+            asset_name: fastenv-windows-amd64.exe
+          - os: macos-latest
+            artifact_name: fastenv
+            asset_name: fastenv-darwin-amd64
     steps:
-      - uses: actions/checkout@v1
-
-      - name: Load Release URL File from release job
-        uses: actions/download-artifact@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          name: upload_url
-
-      - name: Get Release File Name & Upload URL
-        id: get-release-info
-        shell: bash
-        run: echo ::set-output name=upload_url::`cat upload_url/upload_url.txt`
-
-      - uses: actions-rs/toolchain@v1
-        with:
+          profile: minimal
           toolchain: stable
-          target: ${{ matrix.rustup_target }}
+          override: true
+      - name: Build release
+        run: cargo build --release --locked
+      - name: Set prerelease flag (non-Windows)
+        if: runner.os != 'Windows'
+        run: |
+          if [ $(echo ${{ github.ref }} | grep "rc") ]; then
+            echo "PRERELEASE=true" >> $GITHUB_ENV
+            echo "PRERELEASE=true"
+          else
+            echo "PRERELEASE=false" >> $GITHUB_ENV
+            echo "PRERELEASE=false"
+          fi
+          echo $PRERELEASE
+          VERSION=$(echo ${{ github.ref }} | sed 's/refs\/tags\///g')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION"
+      - name: Set prerelease flag (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $full = "${{ github.ref }}"
 
-      - name: Build
-        run: cargo build --verbose --release --locked --target ${{ matrix.rustup_target }}
+          if ( $full -like '*rc*' ) {
+            echo "PRERELEASE=true" >> $env:GITHUB_ENV
+            echo "PRERELEASE=true"
+          } else {
+            echo "PRERELEASE=false" >> $env:GITHUB_ENV
+            echo "PRERELEASE=false"
+          }
 
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+          $trimmed = $full -replace 'refs/tags/',''
+          echo "VERSION=$trimmed" >> $env:GITHUB_ENV
+          echo "VERSION=$trimmed"
+      - name: Upload release assets
+        uses: svenstaro/upload-release-action@v2
         with:
-          upload_url: ${{ steps.get-release-info.outputs.upload_url }}
-          asset_path: ./target/${{ matrix.rustup_target }}/release/${{ matrix.cargo_name }}
+          repo_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+          file: target/release/${{ matrix.artifact_name }}
           asset_name: ${{ matrix.asset_name }}
-          asset_content_type: application/zip
+          tag: ${{ github.ref }}
+          prerelease: ${{ env.PRERELEASE }}
+          release_name: "fastenv ${{ env.VERSION }}"
+          body: "Please refer to **[CHANGELOG.md](https://github.com/trinhminhtriet/fastenv/blob/master/CHANGELOG.md)** for information on this release."
