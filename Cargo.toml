@@ -32,7 +32,7 @@ tempfile = "3.3.0"
 # using fork because we're requiring this bugfix:
 # https://github.com/ogham/rust-term-grid/pull/14
 uutils_term_grid = "0.6.0"
-thiserror = "1.0.68"
+thiserror = "2.0.3"
 which = "7"
 
 [dev-dependencies]
