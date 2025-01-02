@@ -23,7 +23,7 @@ clap = { version = "4", features = ["derive", "std", "color"], default-features 
 console = { version = "0.15.0", default-features = false }
 ctrlc = "3.2.2"
 dialoguer = { version = "0.11.0", default-features = false }
-env_logger = { version = "0.11.5", default-features = false }
+env_logger = { version = "0.11.6", default-features = false }
 exec = "0.3.1"
 hex = "0.4.3"
 log = "0.4.17"
