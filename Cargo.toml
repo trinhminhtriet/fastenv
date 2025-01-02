@@ -1,6 +1,6 @@
 [package]
 name = "fastenv"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Triet Trinh <contact@trinhminhtriet.com>"]
 edition = "2021"
 description = "FastEnv: Unintrusive, on-demand environment manager creating lightweight shims for projects, without shell hooks or auto-loading scripts."
